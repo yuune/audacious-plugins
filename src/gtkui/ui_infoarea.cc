@@ -145,7 +145,7 @@ static void clear (GtkWidget * widget, cairo_t * cr)
     cairo_pattern_add_color_stop_rgb (gradient, 0.5, 0.1, 0.1, 0.1);
     cairo_pattern_add_color_stop_rgb (gradient, 1, 0, 0, 0);
 
-    cairo_set_source (cr, gradient);
+    cairo_set_source_rgba (cr, 0, 0, 0, 0);
     cairo_rectangle (cr, 0, 0, alloc.width, alloc.height);
     cairo_fill (cr);
 
@@ -157,7 +157,8 @@ static void draw_text (GtkWidget * widget, cairo_t * cr, int x, int y, int
  const char * text)
 {
     cairo_move_to (cr, x, y);
-    cairo_set_source_rgba (cr, r, g, b, a);
+    GdkColor * c = (gtk_widget_get_style (widget))->fg + GTK_STATE_NORMAL;
+    cairo_set_source_rgba (cr, c->red / 65535.0, c->green / 65535.0, c->blue / 65535.0, a);
 
     PangoFontDescription * desc = pango_font_description_from_string (font);
     PangoLayout * pl = gtk_widget_create_pango_layout (widget, nullptr);

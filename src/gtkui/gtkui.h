@@ -49,5 +49,6 @@ void popup_menu_tab (unsigned button, uint32_t time, Playlist playlist);
 void activate_search_tool ();
 void activate_playlist_manager ();
 void update_step_size ();
+void show_toolbar ();
 
 #endif

@@ -51,6 +51,8 @@ static const char * const gtkui_defaults[] = {
     "statusbar_visible", "TRUE",
     "entry_count_visible", "FALSE",
     "close_button_visible", "TRUE",
+    "volume_button_visible", "TRUE",
+    "toolbar_bottom_visible", "FALSE",
 
     "autoscroll", "TRUE",
     "playlist_columns", "title artist album queued length",
@@ -785,6 +787,12 @@ bool GtkUI::init ()
     menu_box = gtk_hbox_new (false, 0);
     gtk_box_pack_start ((GtkBox *) vbox_outer, menu_box, false, false, 0);
 
+    /* toolbar top */
+    if (!aud_get_bool("gtkui", "toolbar_bottom_visible"))
+    {
+        show_toolbar ();
+    }
+
     /* main UI layout */
     layout_load ();
 
@@ -798,88 +806,11 @@ bool GtkUI::init ()
 
     show_hide_infoarea ();
 
-    /* toolbar */
-    toolbar = gtk_toolbar_new ();
-    gtk_toolbar_set_style ((GtkToolbar *) toolbar, GTK_TOOLBAR_ICONS);
-    gtk_toolbar_set_show_arrow ((GtkToolbar *) toolbar, false);
-    gtk_box_pack_start ((GtkBox *) vbox_outer, toolbar, false, false, 0);
-
-    /* search button */
-    if (search_tool)
+    /* toolbar bottom */
+    if (aud_get_bool("gtkui", "toolbar_bottom_visible"))
     {
-        search_button = toggle_button_new ("edit-find", _("Search Library"), toggle_search_tool);
-        gtk_toolbar_insert ((GtkToolbar *) toolbar, search_button, -1);
-        gtk_toggle_tool_button_set_active ((GtkToggleToolButton *) search_button,
-         aud_plugin_get_enabled (search_tool));
-        aud_plugin_add_watch (search_tool, search_tool_toggled, nullptr);
+        show_toolbar ();
     }
-
-    /* open/add buttons */
-    toolbar_button_add (toolbar, button_open_pressed, "document-open", _("Open Files"));
-    toolbar_button_add (toolbar, button_add_pressed, "list-add", _("Add Files"));
-
-    gtk_toolbar_insert ((GtkToolbar *) toolbar, gtk_separator_tool_item_new (), -1);
-
-    /* playback buttons */
-    toolbar_button_add (toolbar, aud_drct_pl_prev, "media-skip-backward", _("Previous"));
-    button_play = toolbar_button_add (toolbar, aud_drct_play_pause, "media-playback-start", _("Play"));
-    button_stop = toolbar_button_add (toolbar, aud_drct_stop, "media-playback-stop", _("Stop"));
-    toolbar_button_add (toolbar, aud_drct_pl_next, "media-skip-forward", _("Next"));
-
-    button_record = toggle_button_new ("media-record", _("Record Stream"), toggle_record);
-    gtk_widget_set_no_show_all ((GtkWidget *) button_record, true);
-    gtk_toolbar_insert ((GtkToolbar *) toolbar, button_record, -1);
-
-    gtk_toolbar_insert ((GtkToolbar *) toolbar, gtk_separator_tool_item_new (), -1);
-
-    /* time slider and label */
-    GtkToolItem * boxitem1 = gtk_tool_item_new ();
-    gtk_tool_item_set_expand (boxitem1, true);
-    gtk_toolbar_insert ((GtkToolbar *) toolbar, boxitem1, -1);
-
-    GtkWidget * box1 = gtk_hbox_new (false, 0);
-    gtk_container_add ((GtkContainer *) boxitem1, box1);
-
-    slider = gtk_hscale_new (nullptr);
-    gtk_scale_set_draw_value ((GtkScale *) slider, false);
-    gtk_widget_set_size_request (slider, audgui_get_dpi () * 5 / 4, -1);
-    gtk_widget_set_can_focus (slider, false);
-    gtk_box_pack_start ((GtkBox *) box1, slider, true, true, 6);
-
-    update_step_size ();
-
-    label_time = markup_label_new (nullptr);
-    gtk_box_pack_end ((GtkBox *) box1, label_time, false, false, 6);
-
-    gtk_widget_set_no_show_all (slider, true);
-    gtk_widget_set_no_show_all (label_time, true);
-
-    gtk_toolbar_insert ((GtkToolbar *) toolbar, gtk_separator_tool_item_new (), -1);
-
-    /* repeat and shuffle buttons */
-    button_repeat = toggle_button_new ("media-playlist-repeat", _("Repeat"), toggle_repeat);
-    gtk_toolbar_insert ((GtkToolbar *) toolbar, button_repeat, -1);
-    button_shuffle = toggle_button_new ("media-playlist-shuffle", _("Shuffle"), toggle_shuffle);
-    gtk_toolbar_insert ((GtkToolbar *) toolbar, button_shuffle, -1);
-
-    /* volume button */
-    GtkToolItem * boxitem2 = gtk_tool_item_new ();
-    gtk_toolbar_insert ((GtkToolbar *) toolbar, boxitem2, -1);
-
-    GtkWidget * box2 = gtk_hbox_new (false, 0);
-    gtk_container_add ((GtkContainer *) boxitem2, box2);
-
-    volume = gtk_volume_button_new ();
-    GtkIconSize icon_size = gtk_tool_shell_get_icon_size ((GtkToolShell *) toolbar);
-    g_object_set ((GObject *) volume, "size", icon_size, nullptr);
-    gtk_button_set_relief ((GtkButton *) volume, GTK_RELIEF_NONE);
-    gtk_scale_button_set_adjustment ((GtkScaleButton *) volume,
-     (GtkAdjustment *) gtk_adjustment_new (0, 0, 100, 1, 5, 0));
-    gtk_widget_set_can_focus (volume, false);
-
-    gtk_scale_button_set_value ((GtkScaleButton *) volume, aud_drct_get_volume_main ());
-
-    gtk_box_pack_start ((GtkBox *) box2, volume, false, false, 0);
 
     /* optional UI elements */
     show_hide_menu ();
@@ -982,6 +913,94 @@ static void menu_hide_cb ()
     gtk_toggle_tool_button_set_active ((GtkToggleToolButton *) menu_button, false);
 }
 
+void show_toolbar ()
+{
+    toolbar = gtk_toolbar_new ();
+    gtk_toolbar_set_style ((GtkToolbar *) toolbar, GTK_TOOLBAR_ICONS);
+    gtk_toolbar_set_show_arrow ((GtkToolbar *) toolbar, false);
+    gtk_box_pack_start ((GtkBox *) vbox_outer, toolbar, false, false, 0);
+
+    /* search button */
+    if (search_tool)
+    {
+        search_button = toggle_button_new ("edit-find", _("Search Library"), toggle_search_tool);
+        gtk_toolbar_insert ((GtkToolbar *) toolbar, search_button, -1);
+        gtk_toggle_tool_button_set_active ((GtkToggleToolButton *) search_button,
+         aud_plugin_get_enabled (search_tool));
+        aud_plugin_add_watch (search_tool, search_tool_toggled, nullptr);
+    }
+
+    /* open/add buttons */
+    toolbar_button_add (toolbar, button_open_pressed, "document-open", _("Open Files"));
+    toolbar_button_add (toolbar, button_add_pressed, "list-add", _("Add Files"));
+
+    gtk_toolbar_insert ((GtkToolbar *) toolbar, gtk_separator_tool_item_new (), -1);
+
+    /* playback buttons */
+    toolbar_button_add (toolbar, aud_drct_pl_prev, "media-skip-backward", _("Previous"));
+    button_play = toolbar_button_add (toolbar, aud_drct_play_pause, "media-playback-start", _("Play"));
+    button_stop = toolbar_button_add (toolbar, aud_drct_stop, "media-playback-stop", _("Stop"));
+    toolbar_button_add (toolbar, aud_drct_pl_next, "media-skip-forward", _("Next"));
+
+    button_record = toggle_button_new ("media-record", _("Record Stream"), toggle_record);
+    gtk_widget_set_no_show_all ((GtkWidget *) button_record, true);
+    gtk_toolbar_insert ((GtkToolbar *) toolbar, button_record, -1);
+
+    gtk_toolbar_insert ((GtkToolbar *) toolbar, gtk_separator_tool_item_new (), -1);
+
+    /* time slider and label */
+    GtkToolItem * boxitem1 = gtk_tool_item_new ();
+    gtk_tool_item_set_expand (boxitem1, true);
+    gtk_toolbar_insert ((GtkToolbar *) toolbar, boxitem1, -1);
+
+    GtkWidget * box1 = gtk_hbox_new (false, 0);
+    gtk_container_add ((GtkContainer *) boxitem1, box1);
+
+    slider = gtk_hscale_new (nullptr);
+    gtk_scale_set_draw_value ((GtkScale *) slider, false);
+    gtk_widget_set_size_request (slider, audgui_get_dpi () * 5 / 4, -1);
+    gtk_widget_set_can_focus (slider, false);
+    gtk_box_pack_start ((GtkBox *) box1, slider, true, true, 6);
+
+    update_step_size ();
+
+    label_time = markup_label_new (nullptr);
+    gtk_box_pack_end ((GtkBox *) box1, label_time, false, false, 6);
+
+    gtk_widget_set_no_show_all (slider, true);
+    gtk_widget_set_no_show_all (label_time, true);
+
+    gtk_toolbar_insert ((GtkToolbar *) toolbar, gtk_separator_tool_item_new (), -1);
+
+    /* repeat and shuffle buttons */
+    button_repeat = toggle_button_new ("media-playlist-repeat", _("Repeat"), toggle_repeat);
+    gtk_toolbar_insert ((GtkToolbar *) toolbar, button_repeat, -1);
+    button_shuffle = toggle_button_new ("media-playlist-shuffle", _("Shuffle"), toggle_shuffle);
+    gtk_toolbar_insert ((GtkToolbar *) toolbar, button_shuffle, -1);
+
+    /* volume button */
+    if (aud_get_bool("gtkui","volume_button_visible"))
+    {
+        GtkToolItem * boxitem2 = gtk_tool_item_new ();
+        gtk_toolbar_insert ((GtkToolbar *) toolbar, boxitem2, -1);
+
+        GtkWidget * box2 = gtk_hbox_new (false, 0);
+        gtk_container_add ((GtkContainer *) boxitem2, box2);
+
+        volume = gtk_volume_button_new ();
+        GtkIconSize icon_size = gtk_tool_shell_get_icon_size ((GtkToolShell *) toolbar);
+        g_object_set ((GObject *) volume, "size", icon_size, nullptr);
+        gtk_button_set_relief ((GtkButton *) volume, GTK_RELIEF_NONE);
+        gtk_scale_button_set_adjustment ((GtkScaleButton *) volume,
+         (GtkAdjustment *) gtk_adjustment_new (0, 0, 100, 1, 5, 0));
+        gtk_widget_set_can_focus (volume, false);
+
+        gtk_scale_button_set_value ((GtkScaleButton *) volume, aud_drct_get_volume_main ());
+
+        gtk_box_pack_start ((GtkBox *) box2, volume, false, false, 0);
+    }
+
+}
 void show_hide_menu ()
 {
     if (aud_get_bool ("gtkui", "menu_visible"))

@@ -785,6 +785,20 @@ bool GtkUI::init ()
     menu_box = gtk_hbox_new (false, 0);
     gtk_box_pack_start ((GtkBox *) vbox_outer, menu_box, false, false, 0);
 
+    /* main UI layout */
+    layout_load ();
+
+    GtkWidget * layout = layout_new ();
+    gtk_box_pack_start ((GtkBox *) vbox_outer, layout, true, true, 0);
+
+    vbox = gtk_vbox_new (false, 6);
+    layout_add_center (vbox);
+
+    gtk_box_pack_start ((GtkBox *) vbox, pl_notebook_new (), true, true, 0);
+
+    show_hide_infoarea ();
+
+    /* toolbar */
     toolbar = gtk_toolbar_new ();
     gtk_toolbar_set_style ((GtkToolbar *) toolbar, GTK_TOOLBAR_ICONS);
     gtk_toolbar_set_show_arrow ((GtkToolbar *) toolbar, false);
@@ -867,20 +881,8 @@ bool GtkUI::init ()
 
     gtk_box_pack_start ((GtkBox *) box2, volume, false, false, 0);
 
-    /* main UI layout */
-    layout_load ();
-
-    GtkWidget * layout = layout_new ();
-    gtk_box_pack_start ((GtkBox *) vbox_outer, layout, true, true, 0);
-
-    vbox = gtk_vbox_new (false, 6);
-    layout_add_center (vbox);
-
-    gtk_box_pack_start ((GtkBox *) vbox, pl_notebook_new (), true, true, 0);
-
     /* optional UI elements */
     show_hide_menu ();
-    show_hide_infoarea ();
     show_hide_statusbar ();
 
     AUDDBG ("hooks associate\n");

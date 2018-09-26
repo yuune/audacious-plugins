@@ -23,6 +23,7 @@
 #include <QTreeView>
 
 #include <libaudcore/hook.h>
+#include <libaudcore/mainloop.h>
 #include <libaudcore/playlist.h>
 
 class PlaylistModel;
@@ -39,7 +40,7 @@ public:
     Playlist playlist () const
         { return m_playlist; }
 
-    void scrollToCurrent (bool force = false);
+    bool scrollToCurrent (bool force = false);
     void updatePlaybackIndicator ();
     void playlistUpdate ();
     void playCurrentIndex ();
@@ -60,8 +61,12 @@ private:
     bool inUpdate = false;
     int firstVisibleColumn = 0;
 
+    int m_popup_pos = -1;
+    QueuedFunc m_popup_timer;
+
     QModelIndex rowToIndex (int row);
     int indexToRow (const QModelIndex & index);
+    QModelIndex visibleIndexNear (int row);
 
     void getSelectedRanges (int rowsBefore, int rowsAfter,
      QItemSelection & selected, QItemSelection & deselected);
@@ -70,10 +75,16 @@ private:
     void contextMenuEvent (QContextMenuEvent * event);
     void keyPressEvent (QKeyEvent * event);
     void mouseDoubleClickEvent (QMouseEvent * event);
+    void mouseMoveEvent (QMouseEvent * event);
+    void leaveEvent (QEvent *);
     void dragMoveEvent (QDragMoveEvent * event);
     void dropEvent (QDropEvent * event);
     void currentChanged (const QModelIndex & current, const QModelIndex & previous);
     void selectionChanged (const QItemSelection & selected, const QItemSelection & deselected);
+
+    void showPopup ();
+    void triggerPopup (int pos);
+    void hidePopup ();
 
     void updateSettings ();
 

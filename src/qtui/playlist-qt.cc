@@ -24,9 +24,8 @@
 
 #include <libaudcore/audstrings.h>
 #include <libaudcore/drct.h>
-#include <libaudcore/hook.h>
-#include <libaudcore/playlist.h>
 #include <libaudcore/runtime.h>
+#include <libaudqt/libaudqt.h>
 
 #include "playlist-qt.h"
 #include "playlist_header.h"
@@ -57,6 +56,7 @@ PlaylistWidget::PlaylistWidget (QWidget * parent, Playlist playlist) :
     setFrameShape (QFrame::NoFrame);
     setSelectionMode (ExtendedSelection);
     setDragDropMode (DragDrop);
+    setMouseTracking (true);
 
     updateSettings ();
     header->updateColumns ();
@@ -87,6 +87,31 @@ int PlaylistWidget::indexToRow (const QModelIndex & index)
         return -1;
 
     return proxyModel->mapToSource (index).row ();
+}
+
+QModelIndex PlaylistWidget::visibleIndexNear (int row)
+{
+    QModelIndex index = rowToIndex (row);
+    if (index.isValid ())
+        return index;
+
+    int n_entries = m_playlist.n_entries ();
+
+    for (int r = row + 1; r < n_entries; r ++)
+    {
+        index = rowToIndex (r);
+        if (index.isValid ())
+            return index;
+    }
+
+    for (int r = row - 1; r >= 0; r --)
+    {
+        index = rowToIndex (r);
+        if (index.isValid ())
+            return index;
+    }
+
+    return index;
 }
 
 void PlaylistWidget::contextMenuEvent (QContextMenuEvent * event)
@@ -147,6 +172,25 @@ void PlaylistWidget::mouseDoubleClickEvent (QMouseEvent * event)
 
     if (event->button () == Qt::LeftButton)
         playCurrentIndex ();
+}
+
+void PlaylistWidget::mouseMoveEvent (QMouseEvent * event)
+{
+    int row = indexToRow (indexAt (event->pos ()));
+
+    if (row < 0)
+    {
+        hidePopup ();
+        return;
+    }
+
+    if (aud_get_bool (nullptr, "show_filepopup_for_tuple") && m_popup_pos != row)
+        triggerPopup (row);
+}
+
+void PlaylistWidget::leaveEvent (QEvent *)
+{
+    hidePopup ();
 }
 
 /* Since Qt doesn't support both DragDrop and InternalMove at once,
@@ -215,18 +259,31 @@ void PlaylistWidget::selectionChanged (const QItemSelection & selected,
     }
 }
 
-void PlaylistWidget::scrollToCurrent (bool force)
+/* returns true if the focus changed or the playlist scrolled */
+bool PlaylistWidget::scrollToCurrent (bool force)
 {
+    bool scrolled = false;
     int entry = m_playlist.get_position ();
 
-    if (aud_get_bool ("qtui", "autoscroll") || force)
+    if (entry >= 0 && (aud_get_bool ("qtui", "autoscroll") || force))
     {
+        if (m_playlist.get_focus () != entry)
+            scrolled = true;
+
         m_playlist.select_all (false);
         m_playlist.select_entry (entry, true);
         m_playlist.set_focus (entry);
 
-        scrollTo (rowToIndex (entry));
+        auto index = rowToIndex (entry);
+        auto rect = visualRect (index);
+
+        scrollTo (index);
+
+        if (visualRect (index) != rect)
+            scrolled = true;
     }
+
+    return scrolled;
 }
 
 void PlaylistWidget::updatePlaybackIndicator ()
@@ -347,33 +404,32 @@ void PlaylistWidget::playCurrentIndex ()
 
 void PlaylistWidget::setFilter (const char * text)
 {
+    // Save the current focus before filtering
+    int focus = m_playlist.get_focus ();
+
+    // Empty the model before updating the filter.  This prevents Qt from
+    // performing a series of "rows added" or "rows deleted" updates, which can
+    // be very slow (worst case O(N^2) complexity) on a large playlist.
+    model->entriesRemoved (0, model->rowCount ());
+
+    // Update the filter
     proxyModel->setFilter (text);
 
-    int focus = m_playlist.get_focus ();
-    QModelIndex index;
+    // Repopulate the model
+    model->entriesAdded (0, m_playlist.n_entries ());
 
-    // If there was a valid focus before filtering, Qt updates it for us via
-    // currentChanged().  If not, we will set focus on the first visible row.
+    // If the previously focused row is no longer visible with the new filter,
+    // try to find a nearby one that is, and focus it.
+    auto index = visibleIndexNear (focus);
 
-    if (focus >= 0)
-        index = rowToIndex (focus);
-    else
+    if (index.isValid ())
     {
-        if (! proxyModel->rowCount ())
-            return;
-
-        index = proxyModel->index (0, 0);
         focus = indexToRow (index);
         m_playlist.set_focus (focus);
-    }
-
-    if (! m_playlist.entry_selected (focus))
-    {
         m_playlist.select_all (false);
         m_playlist.select_entry (focus, true);
+        scrollTo (index);
     }
-
-    scrollTo (index);
 }
 
 void PlaylistWidget::setFirstVisibleColumn (int col)
@@ -396,6 +452,28 @@ void PlaylistWidget::moveFocus (int distance)
     int row = currentIndex ().row ();
     row = aud::clamp (row + distance, 0, visibleRows - 1);
     setCurrentIndex (proxyModel->index (row, 0));
+}
+
+void PlaylistWidget::showPopup ()
+{
+    audqt::infopopup_show (m_playlist, m_popup_pos);
+}
+
+void PlaylistWidget::triggerPopup (int pos)
+{
+    audqt::infopopup_hide ();
+
+    m_popup_pos = pos;
+    m_popup_timer.queue (aud_get_int (nullptr, "filepopup_delay") * 100,
+     aud::obj_member<PlaylistWidget, & PlaylistWidget::showPopup>, this);
+}
+
+void PlaylistWidget::hidePopup ()
+{
+    audqt::infopopup_hide ();
+
+    m_popup_pos = -1;
+    m_popup_timer.stop ();
 }
 
 void PlaylistWidget::updateSettings ()

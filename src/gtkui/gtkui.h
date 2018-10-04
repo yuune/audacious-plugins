@@ -50,5 +50,6 @@ void activate_search_tool ();
 void activate_playlist_manager ();
 void update_step_size ();
 void show_toolbar ();
+void redisplay_gtkui ();
 
 #endif

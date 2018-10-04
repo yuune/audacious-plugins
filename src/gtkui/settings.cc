@@ -49,11 +49,11 @@ static const PreferencesWidget gtkui_widgets[] = {
         {0.1, 60, 0.1, N_("seconds")}),
     WidgetCheck (N_("Scroll on song change"),
         WidgetBool ("gtkui", "autoscroll")),
-    WidgetLabel (N_("<b>UI Tweaks (need restart audacious after changes)</b>")),
+    WidgetLabel (N_("<b>UI Tweaks</b>")),
     WidgetCheck (N_("Show volume button at toolbar"),
-        WidgetBool ("gtkui", "volume_button_visible", nullptr)),
+        WidgetBool ("gtkui", "volume_button_visible", redisplay_gtkui)),
     WidgetCheck (N_("Move the toolbar to the bottom of infobar"),
-        WidgetBool ("gtkui", "toolbar_bottom_visible", nullptr))
+        WidgetBool ("gtkui", "toolbar_bottom_visible", redisplay_gtkui))
 };
 
 const PluginPreferences gtkui_prefs = {{gtkui_widgets}};

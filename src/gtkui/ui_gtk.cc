@@ -885,6 +885,14 @@ void GtkUI::cleanup ()
     audgui_cleanup ();
 }
 
+void redisplay_gtkui ()
+{
+    aud_plugin_instance.show (false);
+    aud_plugin_instance.cleanup ();
+    aud_plugin_instance.init ();
+    aud_plugin_instance.show (true);
+}
+
 static void menu_position_cb (GtkMenu *, int * x, int * y, int * push, void * button)
 {
     GtkAllocation alloc;
